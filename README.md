@@ -30,6 +30,10 @@ Anthropic's usage endpoint does not send CORS headers, so a direct browser call 
 
 Paste an Anthropic API key and tap *Refresh*: the app calls `POST /v1/messages/count_tokens` (free, no tokens billed) directly from the browser — officially supported via the `anthropic-dangerous-direct-browser-access` header — and reads your account's real rate limits from the `anthropic-ratelimit-*` response headers: requests/min and tokens/min with used, limit, and reset countdown. Prefer a key from a restricted workspace; it is sent only to `api.anthropic.com`.
 
+### GitHub Copilot
+
+Stub only. GitHub has no API — documented or otherwise — for an individual account's own Copilot premium-request quota; that number only exists in the github.com web UI. (The only real Copilot data the REST API exposes is org/enterprise engagement metrics via `GET /orgs/{org}/copilot/metrics`, which needs an org-admin token and isn't a personal usage limit.) Rather than fake numbers or scrape the authenticated web UI, this card stays a placeholder until GitHub exposes a real per-user endpoint.
+
 ## Hosting on GitHub Pages
 
 1. Push this repository to GitHub.
