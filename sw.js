@@ -1,7 +1,7 @@
 /* AI Usage service worker — precaches the app shell for full offline use. */
 'use strict';
 
-const CACHE_NAME = 'aiusage-v11';
+const CACHE_NAME = 'aiusage-v12';
 
 const APP_SHELL = [
   './',
@@ -11,6 +11,7 @@ const APP_SHELL = [
   './js/app.js',
   './js/plugins/claude.js',
   './js/plugins/copilot.js',
+  './js/plugins/ollama.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',

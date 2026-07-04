@@ -34,6 +34,10 @@ Paste an Anthropic API key and tap *Refresh*: the app calls `POST /v1/messages/c
 
 Stub only. GitHub has no API — documented or otherwise — for an individual account's own Copilot premium-request quota; that number only exists in the github.com web UI. (The only real Copilot data the REST API exposes is org/enterprise engagement metrics via `GET /orgs/{org}/copilot/metrics`, which needs an org-admin token and isn't a personal usage limit.) Rather than fake numbers or scrape the authenticated web UI, this card stays a placeholder until GitHub exposes a real per-user endpoint.
 
+### Ollama
+
+Stub only. ollama.com's cloud API has no documented endpoint for an account's own API-key usage, remaining credits, or spending limits, and its responses carry no rate-limit headers to read instead (unlike Anthropic's `/v1/*` endpoints). This card stays a placeholder until Ollama exposes real per-account usage data.
+
 ## Hosting on GitHub Pages
 
 1. Push this repository to GitHub.

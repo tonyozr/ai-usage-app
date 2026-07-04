@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.8.0';
+  var VERSION = '1.9.0';
   var THEME_KEY = 'aiusage.theme';
   var HINT_KEY = 'aiusage.installHintDismissed';
   var THEMES = ['auto', 'light', 'dark'];
