@@ -5,9 +5,10 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.9.0';
+  var VERSION = '1.16.0';
   var THEME_KEY = 'aiusage.theme';
   var HINT_KEY = 'aiusage.installHintDismissed';
+  var CORS_PROXY_KEY = 'aiusage.corsProxy';
   var THEMES = ['auto', 'light', 'dark'];
 
   var plugins = [];
@@ -53,6 +54,195 @@
   function cycleTheme() {
     var next = THEMES[(THEMES.indexOf(getTheme()) + 1) % THEMES.length];
     applyTheme(next);
+  }
+
+  /* ---------- CORS proxy ----------
+   * Optional, global: routes fetches that would otherwise be blocked by CORS
+   * through the user's own Cloudflare "CORS Header Proxy" Worker (see
+   * https://developers.cloudflare.com/workers/examples/cors-header-proxy/),
+   * following its ?apiurl=<target> convention.
+   *
+   * If that Worker is protected with Cloudflare Access, the "Open proxy to
+   * sign in" button opens the proxy URL directly so the user can complete
+   * the Access login there; the resulting CF_Authorization session cookie
+   * is then forwarded cross-origin via credentials: 'include' on every
+   * proxied request, handled at Cloudflare's edge before the Worker ever
+   * runs. Access still needs an OPTIONS bypass policy, since preflight
+   * requests carry no cookies. */
+
+  function loadCorsProxyConfig() {
+    try {
+      var raw = localStorage.getItem(CORS_PROXY_KEY);
+      var cfg = raw ? JSON.parse(raw) : null;
+      var url = (cfg && typeof cfg.url === 'string') ? cfg.url : '';
+      // Migrate away from the old Service Token shape (aud/clientId/clientSecret),
+      // which stored a real credential in localStorage — purge it on first read
+      // rather than waiting for the user to hit Save again.
+      if (cfg && (cfg.clientId || cfg.clientSecret || cfg.aud)) {
+        saveCorsProxyConfig({ url: url });
+      }
+      return { url: url };
+    } catch (e) {
+      return { url: '' };
+    }
+  }
+
+  function saveCorsProxyConfig(cfg) {
+    try { localStorage.setItem(CORS_PROXY_KEY, JSON.stringify(cfg)); } catch (e) {}
+  }
+
+  function corsProxyUrl(targetUrl) {
+    var cfg = loadCorsProxyConfig();
+    if (!cfg.url) return targetUrl;
+    // No slash normalization: some proxy Workers route on an exact path
+    // (e.g. Cloudflare's example requires a trailing "/corsproxy/"), so the
+    // URL is used exactly as configured.
+    return cfg.url + '?apiurl=' + encodeURIComponent(targetUrl);
+  }
+
+  function corsProxyFetchOptions() {
+    return loadCorsProxyConfig().url ? { credentials: 'include' } : {};
+  }
+
+  // Extra headers to merge into a proxied request's own headers object
+  // (don't spread this into fetch()'s top-level options — that would
+  // replace the request's headers entirely instead of adding to them).
+  // Kept as a stable hook for plugins even though the interactive-login
+  // flow doesn't need any extra headers of its own right now.
+  function corsProxyHeaders() {
+    return {};
+  }
+
+  function initCorsProxyPanel() {
+    var toggle = document.getElementById('cors-proxy-toggle');
+    var panel = document.getElementById('cors-proxy-panel');
+    var urlInput = document.getElementById('cors-proxy-url');
+    var openBtn = document.getElementById('cors-proxy-open');
+    var saveBtn = document.getElementById('cors-proxy-save');
+    var clearBtn = document.getElementById('cors-proxy-clear');
+    if (!toggle || !panel) return;
+
+    function fillInputs() {
+      var cfg = loadCorsProxyConfig();
+      urlInput.value = cfg.url;
+    }
+
+    toggle.addEventListener('click', function () {
+      panel.hidden = !panel.hidden;
+      if (!panel.hidden) fillInputs();
+    });
+
+    openBtn.addEventListener('click', function () {
+      var url = urlInput.value.trim();
+      if (!url) { toast('Enter a proxy URL first'); return; }
+      window.open(url, '_blank', 'noopener');
+    });
+
+    saveBtn.addEventListener('click', function () {
+      saveCorsProxyConfig({ url: urlInput.value.trim() });
+      toast('CORS proxy settings saved');
+    });
+
+    clearBtn.addEventListener('click', function () {
+      saveCorsProxyConfig({ url: '' });
+      fillInputs();
+      toast('CORS proxy cleared');
+    });
+  }
+
+  /* ---------- Config export / import ----------
+   * Backs up (or transfers to another device) everything the app keeps in
+   * localStorage under the "aiusage." namespace: theme, the install-hint
+   * dismissal flag, CORS proxy URL, and every plugin's saved state —
+   * including any tokens/keys/cookies plugins store there. The file is
+   * plain JSON with no encryption, so it's exactly as sensitive as the
+   * credentials pasted into the app. */
+
+  var APP_NAMESPACE_PREFIX = 'aiusage.';
+
+  function collectNamespacedStorage() {
+    var data = {};
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf(APP_NAMESPACE_PREFIX) === 0) {
+        data[key] = localStorage.getItem(key);
+      }
+    }
+    return data;
+  }
+
+  function exportConfig() {
+    var payload = {
+      app: 'ai-usage',
+      version: VERSION,
+      exportedAt: new Date().toISOString(),
+      data: collectNamespacedStorage()
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    var stamp = payload.exportedAt.replace(/[:.]/g, '-');
+    a.download = 'ai-usage-config-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    toast('Config exported');
+  }
+
+  function importConfigFromFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var payload;
+      try {
+        payload = JSON.parse(String(reader.result));
+      } catch (e) {
+        toast('Not a valid config file');
+        return;
+      }
+      var data = payload && typeof payload.data === 'object' ? payload.data : null;
+      if (!data) {
+        toast('Not a valid config file');
+        return;
+      }
+      var keys = Object.keys(data).filter(function (k) {
+        return k.indexOf(APP_NAMESPACE_PREFIX) === 0 && typeof data[k] === 'string';
+      });
+      if (keys.length === 0) {
+        toast('Config file has no importable data');
+        return;
+      }
+      if (!confirm('Import ' + keys.length + ' setting(s)? This overwrites matching data already on this device (including any saved tokens/keys).')) {
+        return;
+      }
+      keys.forEach(function (k) {
+        try { localStorage.setItem(k, data[k]); } catch (e) {}
+      });
+      toast('Config imported');
+      // Simplest correct way to reflect imported plugin state everywhere
+      // (settings fields, meters, CORS proxy panel) without re-deriving
+      // each plugin's render logic here.
+      setTimeout(function () { window.location.reload(); }, 600);
+    };
+    reader.onerror = function () { toast('Could not read file'); };
+    reader.readAsText(file);
+  }
+
+  function initConfigTransferButtons() {
+    var exportBtn = document.getElementById('config-export');
+    var importBtn = document.getElementById('config-import');
+    var fileInput = document.getElementById('config-import-file');
+    if (exportBtn) exportBtn.addEventListener('click', exportConfig);
+    if (importBtn && fileInput) {
+      importBtn.addEventListener('click', function () { fileInput.click(); });
+      fileInput.addEventListener('change', function () {
+        var file = fileInput.files && fileInput.files[0];
+        importConfigFromFile(file);
+        fileInput.value = '';
+      });
+    }
   }
 
   /* ---------- Plugin lifecycle ---------- */
@@ -249,6 +439,8 @@
     startTicking();
     initInstallHint();
     initBadgeButton();
+    initCorsProxyPanel();
+    initConfigTransferButtons();
     registerServiceWorker();
 
     // Ask the browser not to evict our data under storage pressure.
@@ -289,6 +481,12 @@
     formatDuration: formatDuration,
     toast: toast,
     share: share,
-    start: start
+    start: start,
+    corsProxy: {
+      getConfig: loadCorsProxyConfig,
+      wrap: corsProxyUrl,
+      fetchOptions: corsProxyFetchOptions,
+      headers: corsProxyHeaders
+    }
   };
 })();

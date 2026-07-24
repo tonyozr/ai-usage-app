@@ -382,6 +382,24 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* ---------- CORS proxy panel ---------- */
+.cors-proxy-panel {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 20px calc(env(safe-area-inset-bottom) + 16px);
+}
+
+.cors-proxy-panel h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.cors-proxy-panel .field { justify-content: flex-start; }
+.cors-proxy-panel .field label { min-width: 110px; }
+.cors-proxy-panel input[type="text"],
+.cors-proxy-panel input[type="password"] { flex: 1; max-width: none; width: auto; }
+
 /* ---------- Footer button ---------- */
 .footer-btn {
   border: none;

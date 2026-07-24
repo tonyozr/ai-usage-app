@@ -65,13 +65,46 @@
   <footer class="app-footer">
     <span id="app-version"></span>
     <span id="offline-badge" class="offline-badge" hidden>offline</span>
+    <button id="cors-proxy-toggle" class="footer-btn" type="button">CORS proxy</button>
+    <button id="config-export" class="footer-btn" type="button">Export config</button>
+    <button id="config-import" class="footer-btn" type="button">Import config</button>
+    <input id="config-import-file" type="file" accept="application/json,.json" hidden>
     <button id="badge-enable" class="footer-btn" type="button" hidden>Enable icon badge</button>
   </footer>
+
+  <div id="cors-proxy-panel" class="cors-proxy-panel" hidden>
+    <h2>CORS proxy</h2>
+    <p class="plugin-note">
+      Some endpoints (e.g. Claude's subscription usage endpoint) block direct browser
+      requests. Point this at your own
+      <a href="https://developers.cloudflare.com/workers/examples/cors-header-proxy/" target="_blank" rel="noopener">Cloudflare CORS proxy Worker</a>
+      and blocked requests will be routed through it instead. If you protect that Worker with
+      <a href="https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/#cloudflare-workers-example" target="_blank" rel="noopener">Cloudflare Access</a>
+      (recommended — Access rejects unauthorized requests at Cloudflare's edge, before your
+      Worker ever runs), sign in with the button below: it opens the proxy URL in a new tab so
+      you can complete the Access login there, and the resulting session cookie is then sent
+      on every proxied request via <code>credentials: "include"</code>. Add an Access policy
+      that bypasses <code>OPTIONS</code> requests — preflight requests carry no cookies, so
+      Access can't validate them.
+    </p>
+    <div class="field">
+      <label for="cors-proxy-url">Proxy URL</label>
+      <input id="cors-proxy-url" type="text" placeholder="https://proxy.example.workers.dev" autocomplete="off">
+    </div>
+    <div class="controls">
+      <button id="cors-proxy-open" class="btn btn--ghost" type="button">Open proxy to sign in</button>
+    </div>
+    <div class="controls">
+      <button id="cors-proxy-save" class="btn btn--primary" type="button">Save</button>
+      <button id="cors-proxy-clear" class="btn btn--ghost" type="button">Clear</button>
+    </div>
+  </div>
 
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="js/app.js"></script>
   <script src="js/plugins/claude.js"></script>
+  <script src="js/plugins/chatgpt.js"></script>
   <script src="js/plugins/copilot.js"></script>
   <script src="js/plugins/ollama.js"></script>
   <script>AIUsage.start();</script>
