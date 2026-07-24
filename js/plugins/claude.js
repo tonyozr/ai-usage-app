@@ -104,13 +104,14 @@
     var statusEl = ctx.root.querySelector('[data-role="status"]');
     if (statusEl) statusEl.textContent = 'Refreshing…';
 
-    fetch(ANTHROPIC_BASE + OAUTH_USAGE_PATH, {
+    var targetUrl = ANTHROPIC_BASE + OAUTH_USAGE_PATH;
+    fetch(AIUsage.corsProxy.wrap(targetUrl), Object.assign({
       method: 'GET',
-      headers: {
+      headers: Object.assign({
         'Authorization': 'Bearer ' + state.oauthToken,
         'anthropic-beta': 'oauth-2025-04-20'
-      }
-    }).then(function (res) {
+      }, AIUsage.corsProxy.headers())
+    }, AIUsage.corsProxy.fetchOptions())).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (body) {
         if (!res.ok) {
           var msg = res.status === 401
@@ -238,9 +239,16 @@
           '<label for="claude-oauth-token">OAuth token</label>' +
           '<input id="claude-oauth-token" type="password" placeholder="sk-ant-oat..." autocomplete="off">' +
         '</div>' +
-        '<p class="plugin-note">Get a token by running <code>claude setup-token</code> in a terminal ' +
-        '(requires a Pro/Max subscription). It is stored only on this device. ' +
-        'Anthropic’s usage endpoint usually blocks direct browser calls (CORS) — tap Refresh to try it.</p>';
+        '<p class="plugin-note">Don’t use <code>claude setup-token</code> — it issues a token scoped to ' +
+        '<code>user:inference</code> only, and this endpoint needs <code>user:profile</code> too, so it’ll ' +
+        'fail with an auth error. Instead, run <code>claude login</code> (a full interactive login, requires ' +
+        'a Pro/Max subscription), then open <code>~/.claude/.credentials.json</code> and copy ' +
+        '<code>claudeAiOauth.accessToken</code>. It is stored only on this device. This token expires every ' +
+        'few hours — Claude Code refreshes it automatically in that file whenever you use <code>claude</code>, ' +
+        'so if Refresh starts failing, just re-copy the current value. ' +
+        'Anthropic’s usage endpoint also rejects any browser request outright (it checks for an ' +
+        '<code>Origin</code> header and 401s if one is present) — set a <a href="#" data-action="open-cors-proxy">' +
+        'CORS proxy</a> in the app footer; it already rewrites the Origin header to route around this.</p>';
     }
 
     return (
@@ -401,6 +409,12 @@
 
         if (action === 'refresh') { refresh(ctx, self); return; }
         if (action === 'share') { AIUsage.share(summaryText(loadState(ctx))); return; }
+        if (action === 'open-cors-proxy') {
+          e.preventDefault();
+          var toggle = document.getElementById('cors-proxy-toggle');
+          if (toggle) toggle.click();
+          return;
+        }
         if (action === 'reset-all') {
           if (!confirm('Clear all Claude data (including stored credentials)?')) return;
           ctx.store.save(Object.assign({}, DEFAULTS));
