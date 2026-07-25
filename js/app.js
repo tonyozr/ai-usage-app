@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.17.0';
+  var VERSION = '1.20.0';
   var THEME_KEY = 'aiusage.theme';
   var HINT_KEY = 'aiusage.installHintDismissed';
   var CORS_PROXY_KEY = 'aiusage.corsProxy';
@@ -62,23 +62,31 @@
    * https://developers.cloudflare.com/workers/examples/cors-header-proxy/),
    * following its ?apiurl=<target> convention.
    *
-   * If that Worker is protected with Cloudflare Access, authenticate with a
-   * Service Token (Zero Trust > Access > Service Auth > Service Tokens):
-   * the Client ID / Secret are sent as CF-Access-Client-Id /
-   * CF-Access-Client-Secret headers on every proxied request, validated at
-   * Cloudflare's edge before the Worker ever runs — no login flow or
-   * cookies needed, which suits a script/app better than an interactive
-   * session. Access still needs an OPTIONS bypass policy, since preflight
-   * requests carry no custom headers. */
+   * Auth is a single shared secret sent as X-Proxy-Token, checked by the
+   * Worker itself — not Cloudflare Access. Access sits in front of the
+   * Worker and would reject every CORS preflight (OPTIONS never carries
+   * credentials) before the Worker code can even run, and on a bare
+   * *.workers.dev domain there's no zone-level WAF rule available to carve
+   * out an OPTIONS bypass. So the Worker always answers OPTIONS itself
+   * (it carries no sensitive data) and only checks this header on the real
+   * request. */
 
   function loadCorsProxyConfig() {
-    var defaults = { url: '', clientId: '', clientSecret: '' };
     try {
       var raw = localStorage.getItem(CORS_PROXY_KEY);
       var cfg = raw ? JSON.parse(raw) : null;
-      return Object.assign(defaults, cfg);
+      var url = (cfg && typeof cfg.url === 'string') ? cfg.url : '';
+      var proxyToken = (cfg && typeof cfg.proxyToken === 'string') ? cfg.proxyToken : '';
+      // Migrate away from the old Cloudflare Access Service Token shape
+      // (clientId/clientSecret), which stored a real credential in
+      // localStorage — purge it on first read rather than waiting for the
+      // user to hit Save again.
+      if (cfg && (cfg.clientId || cfg.clientSecret)) {
+        saveCorsProxyConfig({ url: url, proxyToken: proxyToken });
+      }
+      return { url: url, proxyToken: proxyToken };
     } catch (e) {
-      return defaults;
+      return { url: '', proxyToken: '' };
     }
   }
 
@@ -105,9 +113,8 @@
   function corsProxyHeaders() {
     var cfg = loadCorsProxyConfig();
     var headers = {};
-    if (cfg.url && cfg.clientId && cfg.clientSecret) {
-      headers['CF-Access-Client-Id'] = cfg.clientId;
-      headers['CF-Access-Client-Secret'] = cfg.clientSecret;
+    if (cfg.url && cfg.proxyToken) {
+      headers['X-Proxy-Token'] = cfg.proxyToken;
     }
     return headers;
   }
@@ -116,8 +123,7 @@
     var toggle = document.getElementById('cors-proxy-toggle');
     var panel = document.getElementById('cors-proxy-panel');
     var urlInput = document.getElementById('cors-proxy-url');
-    var clientIdInput = document.getElementById('cors-proxy-client-id');
-    var clientSecretInput = document.getElementById('cors-proxy-client-secret');
+    var tokenInput = document.getElementById('cors-proxy-token');
     var saveBtn = document.getElementById('cors-proxy-save');
     var clearBtn = document.getElementById('cors-proxy-clear');
     if (!toggle || !panel) return;
@@ -125,8 +131,7 @@
     function fillInputs() {
       var cfg = loadCorsProxyConfig();
       urlInput.value = cfg.url;
-      clientIdInput.value = cfg.clientId;
-      clientSecretInput.value = cfg.clientSecret;
+      tokenInput.value = cfg.proxyToken;
     }
 
     toggle.addEventListener('click', function () {
@@ -137,14 +142,13 @@
     saveBtn.addEventListener('click', function () {
       saveCorsProxyConfig({
         url: urlInput.value.trim(),
-        clientId: clientIdInput.value.trim(),
-        clientSecret: clientSecretInput.value.trim()
+        proxyToken: tokenInput.value.trim()
       });
       toast('CORS proxy settings saved');
     });
 
     clearBtn.addEventListener('click', function () {
-      saveCorsProxyConfig({ url: '', clientId: '', clientSecret: '' });
+      saveCorsProxyConfig({ url: '', proxyToken: '' });
       fillInputs();
       toast('CORS proxy cleared');
     });
