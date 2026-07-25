@@ -54,17 +54,34 @@ Paste your ollama.com session cookie in Settings (DevTools → Application/Stora
 
 This is unofficial screen-scraping of an authenticated page, not a supported API — it can break silently if Ollama changes their markup, and it needs a real, live session cookie (more sensitive than a scoped API key). The cookie is stored only in this device's `localStorage` and is only ever sent to your own configured proxy.
 
+### Grok
+
+Shows **real data**, via grok.com's internal billing RPC (`POST grok_api_v2.GrokBuildBilling/GetGrokCreditsConfig`) — there's no documented usage API, but this undocumented gRPC-Web endpoint is what the account settings page itself calls, and it works (the same technique [CodexBar](https://github.com/steipete/CodexBar)'s web-billing fallback uses).
+
+Authenticate with either your grok.com session cookie (sign in to grok.com in a browser, DevTools → Application/Storage → Cookies → `grok.com`, copy the `sso` or `sso-rw` cookie value) or the access token `grok login` stores in `~/.grok/auth.json` (the `key` field) — either works, and both can be set at once. Requires the [CORS proxy](#cors-proxy-optional): grok.com sends no CORS headers, and the cookie is forwarded the same way as Ollama's, under the `X-Cors-Proxy-Set-Cookie` header.
+
+The response is raw gRPC-Web: length-prefixed protobuf frames with a trailing status frame. This app hand-parses just enough of that wire format (varint/fixed32 field scanning, no protobuf library) to pull out the usage percent and reset time, mirroring CodexBar's field-shape heuristics. Unofficial and undocumented — it can break if xAI changes the response shape.
+
+### JetBrains AI
+
+Shows **real data**, but unlike every other plugin here it's not from a network endpoint at all — JetBrains AI Assistant has no usage API, only a local file the IDE itself writes: `AIAssistantQuotaManager2.xml`, under your JetBrains IDE's `options` folder (e.g. on macOS, `~/Library/Application Support/JetBrains/<IDE><version>/options/`; on Windows, `%APPDATA%\JetBrains\<IDE><version>\options\`).
+
+Tap **Refresh** and pick that file with the browser's native file picker — it's parsed entirely on this device with the browser's built-in `DOMParser`, nothing is uploaded, and no CORS proxy or credentials are involved. Since a web page can't watch a local file for changes, there's no auto-refresh: pick the file again whenever you want current numbers (the same technique CodexBar's JetBrains provider parses, just read manually instead of by a background process).
+
 ## CORS proxy (optional)
 
 Some endpoints — notably Claude's subscription usage endpoint — don't send CORS headers, so the browser blocks a direct fetch. The **CORS proxy** button in the footer lets you point the app at your own [Cloudflare CORS Header Proxy Worker](https://developers.cloudflare.com/workers/examples/cors-header-proxy/): once a proxy URL is set, blocked requests are sent to `<proxy URL>?apiurl=<encoded target>` instead of the target directly, and the Worker adds the CORS headers on the way back.
 
 - **Proxy URL** — your deployed Worker's URL, including whatever path it routes on (Cloudflare's example uses `/corsproxy/`, so e.g. `https://proxy.example.workers.dev/corsproxy/` — trailing slash matters, the app doesn't normalize it).
 
-If you protect that Worker with [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/#cloudflare-workers-example) (recommended — Access rejects unauthorized requests at Cloudflare's edge, before your Worker code ever runs), authenticate with a [Service Token](https://developers.cloudflare.com/cloudflare-one/identity/service-tokens/): create one under Zero Trust → Access → Service Auth → Service Tokens, then add an Access policy for the application that allows it. Paste the generated **Client ID** and **Client Secret** into the panel; the app sends them as `CF-Access-Client-Id` / `CF-Access-Client-Secret` headers on every proxied request — no login flow needed.
+Protect the Worker with a **shared secret checked by the Worker itself**, not Cloudflare Access. Access sits in front of the Worker and rejects unauthorized requests at Cloudflare's edge before the Worker ever runs — which sounds ideal, but it also means it rejects every CORS preflight (`OPTIONS`), since browsers never send credentials on a preflight by spec. Carving out an OPTIONS exception normally means either an Access policy condition on HTTP method (not available in every account) or a zone-level WAF "skip Access" rule — but that requires your own domain as a Cloudflare zone, which a bare `<name>.workers.dev` Worker doesn't have. So instead:
 
-Add an Access policy that **bypasses `OPTIONS` requests** for this application. A CORS preflight carries no custom headers by spec, so Access has nothing to validate on it — without a bypass, Access blocks the preflight with 403 before the browser ever attempts the real, authenticated request.
+1. Set a secret on the Worker: `wrangler secret put PROXY_TOKEN` (any random string).
+2. Paste the same value into the **Proxy token** field in the app.
 
-All fields are stored only in this device's `localStorage` (`aiusage.corsProxy`), same as everything else. Leave the URL blank to disable the proxy — requests go directly to the target, as before.
+The app sends it as an `X-Proxy-Token` header on every proxied request, which the Worker checks itself — see [cors-header-proxy](https://github.com/tonyozr/cors-header-proxy)'s `isAuthorized()`. The Worker always answers `OPTIONS` without checking the token (a preflight carries no sensitive data anyway), so there's nothing left for a preflight to fail on. If you'd previously set up Cloudflare Access in front of this Worker, remove that Application in the Zero Trust dashboard — it would otherwise still block `OPTIONS` regardless of the token.
+
+Both fields are stored only in this device's `localStorage` (`aiusage.corsProxy`), same as everything else. Leave the URL blank to disable the proxy — requests go directly to the target, as before.
 
 ## Export / import config
 
