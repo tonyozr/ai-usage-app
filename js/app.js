@@ -13,6 +13,7 @@
 
   var plugins = [];
   var tickTimer = null;
+  var LAYOUT_KEY = 'aiusage.layout';
 
   /* ---------- Storage (namespaced localStorage) ---------- */
 
@@ -258,6 +259,108 @@
     plugins.push(plugin);
   }
 
+  /* ---------- Layout (card order + collapsed state) ----------
+   * Kept out of each plugin's own state so it survives a plugin's own
+   * "reset all data" action and stays consistent even if plugins are
+   * added/removed. The drag handle and collapse toggle live in a toolbar
+   * that's a sibling of the plugin's own render root (never inside it), so
+   * a plugin overwriting its root's innerHTML on rebuild can never wipe
+   * them out. */
+
+  function loadLayout() {
+    try {
+      var raw = localStorage.getItem(LAYOUT_KEY);
+      var parsed = raw ? JSON.parse(raw) : null;
+      return {
+        order: (parsed && Array.isArray(parsed.order)) ? parsed.order : [],
+        collapsed: (parsed && parsed.collapsed && typeof parsed.collapsed === 'object') ? parsed.collapsed : {}
+      };
+    } catch (e) {
+      return { order: [], collapsed: {} };
+    }
+  }
+
+  function saveLayout(layout) {
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {}
+  }
+
+  function orderedPlugins() {
+    var layout = loadLayout();
+    var byId = {};
+    plugins.forEach(function (p) { byId[p.id] = p; });
+    var ordered = layout.order.map(function (id) { return byId[id]; }).filter(Boolean);
+    plugins.forEach(function (p) { if (ordered.indexOf(p) < 0) ordered.push(p); });
+    return ordered;
+  }
+
+  function saveCurrentOrder(container) {
+    var layout = loadLayout();
+    layout.order = Array.prototype.map.call(
+      container.querySelectorAll('.plugin-card'),
+      function (card) { return card.dataset.pluginId; }
+    );
+    saveLayout(layout);
+  }
+
+  function initCardDrag(container) {
+    var dragCard = null;
+
+    container.addEventListener('pointerdown', function (e) {
+      var handle = e.target.closest('.plugin-card__drag');
+      if (!handle) return;
+      var card = handle.closest('.plugin-card');
+      if (!card) return;
+      dragCard = card;
+      dragCard.classList.add('plugin-card--dragging');
+      try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    container.addEventListener('pointermove', function (e) {
+      if (!dragCard) return;
+      e.preventDefault();
+      var cards = container.querySelectorAll('.plugin-card');
+      for (var i = 0; i < cards.length; i++) {
+        var sib = cards[i];
+        if (sib === dragCard) continue;
+        var rect = sib.getBoundingClientRect();
+        var mid = rect.top + rect.height / 2;
+        var dragFollowsSib = !!(sib.compareDocumentPosition(dragCard) & Node.DOCUMENT_POSITION_FOLLOWING);
+        if (e.clientY < mid && dragFollowsSib) {
+          container.insertBefore(dragCard, sib);
+          break;
+        }
+        if (e.clientY >= mid && !dragFollowsSib) {
+          container.insertBefore(dragCard, sib.nextSibling);
+          break;
+        }
+      }
+    });
+
+    function endDrag() {
+      if (!dragCard) return;
+      dragCard.classList.remove('plugin-card--dragging');
+      saveCurrentOrder(container);
+      dragCard = null;
+    }
+
+    container.addEventListener('pointerup', endDrag);
+    container.addEventListener('pointercancel', endDrag);
+  }
+
+  function initCardCollapse(container) {
+    container.addEventListener('click', function (e) {
+      var btn = e.target.closest('.plugin-card__collapse');
+      if (!btn) return;
+      var card = btn.closest('.plugin-card');
+      if (!card) return;
+      var collapsed = card.classList.toggle('plugin-card--collapsed');
+      btn.setAttribute('aria-label', collapsed ? 'Expand' : 'Collapse');
+      var layout = loadLayout();
+      layout.collapsed[card.dataset.pluginId] = collapsed;
+      saveLayout(layout);
+    });
+  }
+
   function mountPlugins() {
     var container = document.getElementById('plugin-container');
     container.innerHTML = '';
@@ -270,14 +373,36 @@
       return;
     }
 
-    plugins.forEach(function (plugin) {
+    var layout = loadLayout();
+
+    orderedPlugins().forEach(function (plugin) {
       var card = document.createElement('section');
       card.className = 'plugin-card';
       card.id = 'plugin-' + plugin.id;
+      card.dataset.pluginId = plugin.id;
+      if (layout.collapsed[plugin.id]) card.classList.add('plugin-card--collapsed');
+
+      var toolbar = document.createElement('div');
+      toolbar.className = 'plugin-card__toolbar';
+      toolbar.innerHTML =
+        '<button type="button" class="plugin-card__drag" aria-label="Drag to reorder" title="Drag to reorder">⠿</button>' +
+        '<button type="button" class="plugin-card__collapse" aria-label="' +
+          (layout.collapsed[plugin.id] ? 'Expand' : 'Collapse') + '" title="Collapse/expand">' +
+          '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">' +
+            '<path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+              'stroke-linecap="round" stroke-linejoin="round"/>' +
+          '</svg>' +
+        '</button>';
+      card.appendChild(toolbar);
+
+      var body = document.createElement('div');
+      body.className = 'plugin-card__body';
+      card.appendChild(body);
+
       container.appendChild(card);
 
       var ctx = {
-        root: card,
+        root: body,
         store: createStore(plugin.id)
       };
       plugin._ctx = ctx;
@@ -285,9 +410,12 @@
       try {
         plugin.render(ctx);
       } catch (e) {
-        card.innerHTML = '<p class="empty-note">Plugin "' + plugin.id + '" failed to load.</p>';
+        body.innerHTML = '<p class="empty-note">Plugin "' + plugin.id + '" failed to load.</p>';
       }
     });
+
+    initCardDrag(container);
+    initCardCollapse(container);
   }
 
   function tickPlugins() {

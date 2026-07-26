@@ -305,6 +305,8 @@
     rootEl.querySelector('[data-role="reset"]').textContent = resetText;
   }
 
+  var CLAUDE_USAGE_URL = 'https://claude.ai/new#settings/usage';
+
   function emptyNote(state) {
     if (state.source === 'api') {
       return state.apiKey
@@ -334,7 +336,8 @@
           state.api.metrics[n].limit && state.api.metrics[n].remaining;
       });
       if (names.length === 0) {
-        container.innerHTML = '<p class="empty-note">' + emptyNote(state) + '</p>';
+        container.innerHTML = '<p class="empty-note">' + emptyNote(state) +
+          ' <a href="' + CLAUDE_USAGE_URL + '" target="_blank" rel="noopener">Open usage page ↗</a></p>';
         return;
       }
       container.innerHTML = names.map(function (n) {
@@ -354,7 +357,8 @@
 
     var keys = state.sub && state.sub.windows ? Object.keys(state.sub.windows) : [];
     if (keys.length === 0) {
-      container.innerHTML = '<p class="empty-note">' + emptyNote(state) + '</p>';
+      container.innerHTML = '<p class="empty-note">' + emptyNote(state) +
+        ' <a href="' + CLAUDE_USAGE_URL + '" target="_blank" rel="noopener">Open usage page ↗</a></p>';
       return;
     }
     container.innerHTML = keys.map(function (k, i) {

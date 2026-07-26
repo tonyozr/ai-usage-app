@@ -229,6 +229,8 @@
     rootEl.querySelector('[data-role="reset"]').textContent = resetText;
   }
 
+  var CHATGPT_USAGE_URL = 'https://chatgpt.com/#settings/Usage';
+
   function emptyNote(state) {
     return state.accessToken
       ? 'No data yet — tap Refresh to fetch your ChatGPT usage.'
@@ -249,7 +251,8 @@
 
     var keys = state.snap && state.snap.windows ? Object.keys(state.snap.windows) : [];
     if (keys.length === 0) {
-      container.innerHTML = '<p class="empty-note">' + emptyNote(state) + '</p>';
+      container.innerHTML = '<p class="empty-note">' + emptyNote(state) +
+        ' <a href="' + CHATGPT_USAGE_URL + '" target="_blank" rel="noopener">Open usage page ↗</a></p>';
       return;
     }
     container.innerHTML = keys.map(function (k, i) {

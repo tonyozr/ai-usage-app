@@ -149,6 +149,7 @@ body {
 
 /* ---------- Plugin card ---------- */
 .plugin-card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -157,11 +158,73 @@ body {
   transition: background 0.25s ease, border-color 0.25s ease;
 }
 
+.plugin-card--dragging {
+  opacity: 0.6;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Collapsed: keep the plugin's own header (its body's first child) visible,
+   hide everything else the plugin rendered. The toolbar lives outside the
+   body entirely, so it's always shown regardless of this rule. */
+.plugin-card--collapsed .plugin-card__body > *:not(.plugin-card__header) {
+  display: none;
+}
+
+.plugin-card--collapsed .plugin-card__header {
+  margin-bottom: 0;
+}
+
+.plugin-card--collapsed .plugin-card__collapse svg {
+  transform: rotate(-90deg);
+}
+
+.plugin-card__toolbar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  z-index: 2;
+}
+
+.plugin-card__drag,
+.plugin-card__collapse {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.plugin-card__collapse {
+  touch-action: auto;
+}
+
+.plugin-card__collapse svg {
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.plugin-card__drag:active,
+.plugin-card__collapse:active {
+  background: var(--surface-2);
+}
+
 .plugin-card__header {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
+  padding-right: 68px;
 }
 
 .plugin-card__logo {
