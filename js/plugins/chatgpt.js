@@ -252,7 +252,7 @@
     var keys = state.snap && state.snap.windows ? Object.keys(state.snap.windows) : [];
     if (keys.length === 0) {
       container.innerHTML = '<p class="empty-note">' + emptyNote(state) +
-        ' <a href="' + CHATGPT_USAGE_URL + '" target="_blank" rel="noopener">Open usage page ↗</a></p>';
+        ' ' + AIUsage.usageLinkHtml(CHATGPT_USAGE_URL, 'Open usage page') + '</p>';
       return;
     }
     container.innerHTML = keys.map(function (k, i) {

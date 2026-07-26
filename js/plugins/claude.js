@@ -337,7 +337,7 @@
       });
       if (names.length === 0) {
         container.innerHTML = '<p class="empty-note">' + emptyNote(state) +
-          ' <a href="' + CLAUDE_USAGE_URL + '" target="_blank" rel="noopener">Open usage page ↗</a></p>';
+          ' ' + AIUsage.usageLinkHtml(CLAUDE_USAGE_URL, 'Open usage page') + '</p>';
         return;
       }
       container.innerHTML = names.map(function (n) {
@@ -358,7 +358,7 @@
     var keys = state.sub && state.sub.windows ? Object.keys(state.sub.windows) : [];
     if (keys.length === 0) {
       container.innerHTML = '<p class="empty-note">' + emptyNote(state) +
-        ' <a href="' + CLAUDE_USAGE_URL + '" target="_blank" rel="noopener">Open usage page ↗</a></p>';
+        ' ' + AIUsage.usageLinkHtml(CLAUDE_USAGE_URL, 'Open usage page') + '</p>';
       return;
     }
     container.innerHTML = keys.map(function (k, i) {

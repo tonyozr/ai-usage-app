@@ -101,6 +101,16 @@
     </div>
   </div>
 
+  <div id="usage-frame-modal" class="usage-frame-modal" hidden>
+    <div class="usage-frame-modal__bar">
+      <span id="usage-frame-modal-title" class="usage-frame-modal__title"></span>
+      <a id="usage-frame-modal-open" class="usage-frame-modal__open" href="#" target="_blank" rel="noopener">Open in new tab ↗</a>
+      <button id="usage-frame-modal-close" class="usage-frame-modal__close icon-btn" type="button" aria-label="Close">✕</button>
+    </div>
+    <p class="usage-frame-modal__hint">Some sites block being shown here — use "Open in new tab" if this stays blank.</p>
+    <iframe id="usage-frame-modal-frame" class="usage-frame-modal__frame" title="Usage page"></iframe>
+  </div>
+
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="js/app.js"></script>

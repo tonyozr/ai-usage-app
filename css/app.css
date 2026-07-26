@@ -463,6 +463,83 @@ body {
 .cors-proxy-panel input[type="text"],
 .cors-proxy-panel input[type="password"] { flex: 1; max-width: none; width: auto; }
 
+/* ---------- Usage link + in-app iframe button ---------- */
+.usage-frame-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  padding: 0;
+}
+
+.usage-frame-btn:active { transform: scale(0.94); }
+
+.usage-frame-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.usage-frame-modal__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.usage-frame-modal__title {
+  flex: 1;
+  font-weight: 650;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-frame-modal__open {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.usage-frame-modal__close {
+  width: 32px;
+  height: 32px;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.usage-frame-modal__hint {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.usage-frame-modal__frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: var(--surface);
+}
+
 /* ---------- Footer button ---------- */
 .footer-btn {
   border: none;

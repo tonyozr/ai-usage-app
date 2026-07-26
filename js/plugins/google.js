@@ -507,7 +507,7 @@
 
     if (keys.length === 0) {
       container.innerHTML = '<p class="empty-note">' + emptyNote(state, snap) +
-        ' <a href="' + GEMINI_USAGE_URL + '" target="_blank" rel="noopener">Open usage page ↗</a></p>';
+        ' ' + AIUsage.usageLinkHtml(GEMINI_USAGE_URL, 'Open usage page') + '</p>';
       return;
     }
 

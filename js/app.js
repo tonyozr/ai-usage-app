@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.23.0';
+  var VERSION = '1.23.1';
   var THEME_KEY = 'aiusage.theme';
   var HINT_KEY = 'aiusage.installHintDismissed';
   var CORS_PROXY_KEY = 'aiusage.corsProxy';
@@ -495,6 +495,54 @@
     });
   }
 
+  /* ---------- Usage page iframe modal ----------
+   * Lets a plugin's "Open usage page" link also open in-app, in an iframe,
+   * instead of always leaving to a new tab. Many account/usage pages send
+   * X-Frame-Options/CSP frame-ancestors and will refuse to render here —
+   * that's a site-side restriction the modal can't detect or work around,
+   * so it just shows a hint and an "Open in new tab" fallback alongside it. */
+
+  function initUsageFrameModal() {
+    var modal = document.getElementById('usage-frame-modal');
+    var frame = document.getElementById('usage-frame-modal-frame');
+    var title = document.getElementById('usage-frame-modal-title');
+    var openLink = document.getElementById('usage-frame-modal-open');
+    var closeBtn = document.getElementById('usage-frame-modal-close');
+    if (!modal || !frame || !title || !openLink || !closeBtn) return;
+
+    function close() {
+      modal.hidden = true;
+      frame.src = 'about:blank'; // stop the page running/loading in the background
+    }
+
+    closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !modal.hidden) close();
+    });
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-usage-frame-url]');
+      if (!btn) return;
+      e.preventDefault();
+      var url = btn.getAttribute('data-usage-frame-url');
+      title.textContent = btn.getAttribute('data-usage-frame-title') || 'Usage page';
+      openLink.href = url;
+      frame.src = url;
+      modal.hidden = false;
+    });
+  }
+
+  /* Shared markup for a plugin's "Open usage page" empty-state link, with an
+     adjacent button to open the same page in-app via the iframe modal. */
+  function usageLinkHtml(url, label) {
+    return '<a href="' + url + '" target="_blank" rel="noopener">' + (label || 'Open usage page') + ' ↗</a>' +
+      ' <button type="button" class="usage-frame-btn" data-usage-frame-url="' + url + '" ' +
+      'data-usage-frame-title="' + (label || 'Usage page') + '" title="Open here">⤢</button>';
+  }
+
   /* ---------- Toast ---------- */
 
   var toastTimer = null;
@@ -573,6 +621,7 @@
     initBadgeButton();
     initCorsProxyPanel();
     initConfigTransferButtons();
+    initUsageFrameModal();
     registerServiceWorker();
 
     // Ask the browser not to evict our data under storage pressure.
@@ -611,6 +660,7 @@
     version: VERSION,
     registerPlugin: registerPlugin,
     formatDuration: formatDuration,
+    usageLinkHtml: usageLinkHtml,
     toast: toast,
     share: share,
     start: start,

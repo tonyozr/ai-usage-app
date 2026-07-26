@@ -1,7 +1,7 @@
 /* AI Usage service worker — precaches the app shell for full offline use. */
 'use strict';
 
-const CACHE_NAME = 'aiusage-v32';
+const CACHE_NAME = 'aiusage-v33';
 
 const APP_SHELL = [
   './',
