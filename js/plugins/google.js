@@ -26,6 +26,7 @@
   var LOAD_CODEASSIST_PATH = '/v1internal:loadCodeAssist';
   var GEMINI_API_BASE = 'https://generativelanguage.googleapis.com';
   var GEMINI_MODELS_PATH = '/v1beta/models';
+  var GEMINI_USAGE_URL = 'https://gemini.google.com/usage';
 
   var DEFAULTS = {
     source: 'subscription', // 'subscription' | 'api'
@@ -505,7 +506,8 @@
     var keys = snap && snap.windows ? Object.keys(snap.windows) : [];
 
     if (keys.length === 0) {
-      container.innerHTML = '<p class="empty-note">' + emptyNote(state, snap) + '</p>';
+      container.innerHTML = '<p class="empty-note">' + emptyNote(state, snap) +
+        ' <a href="' + GEMINI_USAGE_URL + '" target="_blank" rel="noopener">Open usage page ↗</a></p>';
       return;
     }
 
