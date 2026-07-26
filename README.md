@@ -32,6 +32,22 @@ Anthropic's usage endpoint also actively rejects browser calls: it 401s on any r
 
 Paste an Anthropic API key and tap *Refresh*: the app calls `POST /v1/messages/count_tokens` (free, no tokens billed) directly from the browser — officially supported via the `anthropic-dangerous-direct-browser-access` header — and reads your account's real rate limits from the `anthropic-ratelimit-*` response headers: requests/min and tokens/min with used, limit, and reset countdown. Prefer a key from a restricted workspace; it is sent only to `api.anthropic.com`.
 
+### Google / Gemini
+
+Shows **real data from your Google / Gemini account**. Two data sources, switchable in Settings; credentials live only in this device's `localStorage`.
+
+#### Account / OAuth (Gemini CLI / Code Assist) — default
+
+Uses Google's internal Cloud Code quota endpoints (`POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary` or `retrieveUserQuota`, plus `fetchAvailableModels`) to fetch real quota utilization percentages and reset countdowns for Gemini models.
+
+Sign in to the Gemini CLI with **OAuth** (not an API key — `gemini` prompts for this on first run, or run `/auth` inside it to switch), then copy the `access_token` field from `~/.gemini/oauth_creds.json` or `~/.config/gemini/oauth_creds.json` (access tokens expire after ~1 hour, so you'll need to re-copy periodically). Optionally set a GCP Project ID if required by your GCP organization.
+
+**`gcloud auth print-access-token` will not work here** — this internal endpoint only accepts tokens minted by the Gemini CLI's own OAuth client and rejects tokens from gcloud's client with a 401, even though they're otherwise valid. If your `~/.gemini/settings.json` has `"selectedType": "gemini-api-key"` instead of an OAuth type, or `~/.gemini/google_accounts.json` has no `active` account, there's no OAuth token to copy yet — complete the CLI's OAuth login first.
+
+#### API key (Google AI Studio)
+
+Paste a Google Gemini API key (`AIzaSy...`) from [Google AI Studio](https://aistudio.google.com/). Calls `GET https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_KEY` to verify the key and show how many models it can access. The public Gemini API exposes no per-key usage data, so this mode shows no meters.
+
 ### ChatGPT
 
 Shows **real data from your ChatGPT/Codex account** — the same endpoint the Codex CLI uses for its own usage display (`GET https://chatgpt.com/backend-api/wham/usage`), with **5-hour session** and **weekly** rate-limit utilization, reset countdowns, and plan type (the same technique [CodexBar](https://github.com/steipete/CodexBar) uses for its Codex provider).

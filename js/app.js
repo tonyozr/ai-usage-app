@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.20.0';
+  var VERSION = '1.22.0';
   var THEME_KEY = 'aiusage.theme';
   var HINT_KEY = 'aiusage.installHintDismissed';
   var CORS_PROXY_KEY = 'aiusage.corsProxy';
